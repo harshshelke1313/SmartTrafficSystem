@@ -1,0 +1,32 @@
+### Test 1: A speeding vehicle (Should get a fine)
+POST http://localhost:8080/api/traffic/check
+Content-Type: application/json
+
+{
+  "vehicleId": "MH12AB1234",
+  "speed": 105.0,
+  "zone": "Pune-West",
+  "emergencyVehicle": false
+}
+
+### Test 2: A safe driver
+POST http://localhost:8080/api/traffic/check
+Content-Type: application/json
+
+{
+  "vehicleId": "MH14XY5678",
+  "speed": 65.0,
+  "zone": "Pune-East",
+  "emergencyVehicle": false
+}
+
+### Test 3: An ambulance speeding (Should be ignored)
+POST http://localhost:8080/api/traffic/check
+Content-Type: application/json
+
+{
+  "vehicleId": "AMB-9999",
+  "speed": 130.0,
+  "zone": "Mumbai",
+  "emergencyVehicle": true
+}
