@@ -3,83 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Traffic System</title>
+    <title>React Traffic Radar</title>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
-        h2 { text-align: center; color: #333; margin-top: 0; }
-        label { font-weight: bold; margin-top: 10px; display: block; color: #555; }
-        input[type="text"], input[type="number"] { width: 100%; padding: 10px; margin: 8px 0 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        .checkbox-container { display: flex; align-items: center; margin-bottom: 20px; }
-        .checkbox-container input { margin-right: 10px; width: 18px; height: 18px; }
-        button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; }
-        button:hover { background-color: #0056b3; }
-        #result { margin-top: 20px; padding: 15px; border-radius: 5px; display: none; text-align: center; font-size: 16px;}
-        .violation { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .safe { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        :root { --primary: #00d2ff; --bg: #0f172a; --panel: #1e293b; --text: #f8fafc; --danger: #ef4444; --safe: #10b981; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; overflow: hidden; }
+
+        .app-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; transition: all 0.3s; position: relative; }
+
+        /* Main Dashboard */
+        .dashboard { background: var(--panel); padding: 40px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); width: 100%; max-width: 450px; z-index: 10; position: relative; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s ease-in-out; }
+        h2 { text-align: center; color: var(--primary); margin-top: 0; text-transform: uppercase; letter-spacing: 2px; }
+
+        /* Inputs */
+        label { font-weight: 600; margin-top: 15px; display: block; color: #94a3b8; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 12px; margin: 8px 0 20px; background: rgba(0,0,0,0.3); border: 1px solid #334155; color: white; border-radius: 8px; box-sizing: border-box; font-size: 16px; outline: none; transition: all 0.3s; }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 15px rgba(0, 210, 255, 0.3); }
+        .checkbox-container { display: flex; align-items: center; margin-bottom: 25px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; border: 1px solid #334155; }
+        .checkbox-container input { margin-right: 15px; width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer; }
+
+        /* Button */
+        button { width: 100%; padding: 15px; background: linear-gradient(45deg, #00d2ff, #3a7bd5); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; transition: all 0.2s; position: relative; overflow: hidden; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(0, 210, 255, 0.5); }
+        button:disabled { background: #475569; cursor: not-allowed; transform: none; }
+
+        /* Dynamic Results */
+        .result-box { margin-top: 25px; padding: 20px; border-radius: 8px; text-align: center; font-size: 16px; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .violation { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 2px solid var(--danger); box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.2); }
+        .safe { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 2px solid var(--safe); box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.2); }
+        .fine-amount { font-size: 32px; font-weight: 900; color: white; display: block; margin-top: 10px; text-shadow: 0 0 15px var(--danger); animation: pulseText 1s infinite alternate; }
+
+        /* --- THE DANGER FLICKER EFFECTS --- */
+        .status-danger { background-color: #2a0808; }
+        .status-danger .dashboard { border-color: var(--danger); animation: violentShake 0.4s infinite; box-shadow: 0 0 50px rgba(239, 68, 68, 0.6); }
+        .siren-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 999; display: none; }
+        .status-danger .siren-overlay { display: block; animation: intenseSiren 0.6s infinite alternate; }
+        .status-danger .highway-container { border-top-color: var(--danger); box-shadow: 0 -10px 30px rgba(239,68,68,0.3); }
+
+        /* Highway Animations */
+        .highway-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 140px; background: #0a0a0a; border-top: 4px solid #333; z-index: 1; transition: border-color 0.3s; }
+        .road-lines { width: 200%; height: 100%; background-image: linear-gradient(90deg, transparent 50%, #fbbf24 50%); background-size: 120px 12px; background-repeat: repeat-x; background-position-y: center; }
+        .car-icon { position: absolute; bottom: 35px; left: 50%; font-size: 70px; z-index: 2; transition: all 0.2s ease-out; }
+
+        /* Keyframes */
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes intenseSiren { 0% { background: radial-gradient(circle, rgba(255,0,0,0.1) 0%, transparent 80%); } 100% { background: radial-gradient(circle, rgba(255,0,0,0.6) 0%, rgba(255,0,0,0.2) 100%); } }
+        @keyframes violentShake { 0%, 100% { transform: translate(0, 0) rotate(0deg); } 25% { transform: translate(-3px, 3px) rotate(-1deg); } 50% { transform: translate(3px, -2px) rotate(1deg); } 75% { transform: translate(-3px, -3px) rotate(0deg); } }
+        @keyframes pulseText { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.05); opacity: 1; } }
+        @keyframes driveFast { from { transform: translateX(0); } to { transform: translateX(-120px); } }
     </style>
 </head>
 <body>
+<div id="root"></div>
 
-<div class="card">
-    <h2>Traffic Monitor</h2>
-    <form id="trafficForm">
-        <label for="vehicleId">Vehicle ID</label>
-        <input type="text" id="vehicleId" placeholder="e.g., MH12AB1234" required>
+<script type="text/babel">
+    const { useState, useEffect } = React;
 
-        <label for="speed">Speed (km/h)</label>
-        <input type="number" id="speed" placeholder="e.g., 105" required>
+    function TrafficApp() {
+        // State Management
+        const [vehicleId, setVehicleId] = useState('');
+        const [speed, setSpeed] = useState('');
+        const [zone, setZone] = useState('');
+        const [isEmergency, setIsEmergency] = useState(false);
+        const [status, setStatus] = useState('idle'); // 'idle', 'scanning', 'safe', 'danger'
+        const [result, setResult] = useState(null);
 
-        <label for="zone">Zone</label>
-        <input type="text" id="zone" placeholder="e.g., Pune-West" required>
+        // Dynamic Car Animation Logic
+        const speedValue = parseFloat(speed) || 0;
+        const animationDuration = speedValue === 0 ? '0s' : `${Math.max(0.05, 250 / speedValue)}s`;
+        const carScale = speedValue > 100 ? 1.08 : 1;
+        const carY = speedValue > 100 ? '-5px' : '0px';
 
-        <div class="checkbox-container">
-            <input type="checkbox" id="emergencyVehicle">
-            <label for="emergencyVehicle" style="margin-top: 0;">Emergency Vehicle</label>
-        </div>
+        const handleSubmit = async (e) => {
+            e.preventDefault();
+            setStatus('scanning');
+            setResult(null);
 
-        <button type="submit">Process Event</button>
-    </form>
+            const payload = {
+                vehicleId,
+                speed: speedValue,
+                zone,
+                emergencyVehicle: isEmergency
+            };
 
-    <div id="result"></div>
-</div>
+            try {
+                const response = await fetch('/api/traffic/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
-<script>
-    document.getElementById('trafficForm').addEventListener('submit', async function(e) {
-        e.preventDefault(); // Stop the page from reloading
+                const data = await response.json();
+                setResult(data);
 
-        // Gather data from the form
-        const data = {
-            vehicleId: document.getElementById('vehicleId').value,
-            speed: parseFloat(document.getElementById('speed').value),
-            zone: document.getElementById('zone').value,
-            emergencyVehicle: document.getElementById('emergencyVehicle').checked
+                if (data.status === 'VIOLATION_DETECTED') {
+                    setStatus('danger');
+                } else {
+                    setStatus('safe');
+                }
+            } catch (error) {
+                alert("Error connecting to the server!");
+                setStatus('idle');
+            }
         };
 
-        // Send data to your Spring Boot API
-        try {
-            const response = await fetch('/api/traffic/check', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
+        return (
+            <div className={`app-container ${status === 'danger' ? 'status-danger' : ''}`}>
+                <div className="siren-overlay"></div>
 
-            const result = await response.json();
-            const resultDiv = document.getElementById('result');
-            resultDiv.style.display = 'block';
+                <div className="dashboard">
+                    <h2>📡 React Radar UI</h2>
+                    <form onSubmit={handleSubmit}>
+                        <label>Target Vehicle ID</label>
+                        <input type="text" value={vehicleId} onChange={e => setVehicleId(e.target.value)} placeholder="e.g., MH16AK2701" required />
 
-            // Update the UI based on the database response
-            if (result.status === 'VIOLATION_DETECTED') {
-                resultDiv.className = 'violation';
-                resultDiv.innerHTML = `<strong>🚨 ${result.message}</strong><br><br>Vehicle: ${result.vehicleId}<br>Fine Issued: <b>${result.fine}</b>`;
-            } else {
-                resultDiv.className = 'safe';
-                resultDiv.innerHTML = `<strong>✅ ${result.message}</strong>`;
-            }
-        } catch (error) {
-            alert("Error connecting to the server!");
-        }
-    });
+                        <label>Detected Speed (km/h)</label>
+                        <input type="number" value={speed} onChange={e => setSpeed(e.target.value)} placeholder="e.g., 185" required />
+
+                        <label>Active Zone</label>
+                        <input type="text" value={zone} onChange={e => setZone(e.target.value)} placeholder="e.g., Pune-East" required />
+
+                        <div className="checkbox-container">
+                            <input type="checkbox" checked={isEmergency} onChange={e => setIsEmergency(e.target.checked)} />
+                            <label style={{marginTop: 0, cursor: 'pointer'}} onClick={() => setIsEmergency(!isEmergency)}>
+                                Priority Emergency Vehicle
+                            </label>
+                        </div>
+
+                        <button type="submit" disabled={status === 'scanning'}>
+                            {status === 'scanning' ? 'Scanning Target... ⏱️' : 'Process Target'}
+                        </button>
+                    </form>
+
+                    {/* Result Display */}
+                    {result && (
+                        <div className={`result-box ${status === 'danger' ? 'violation' : 'safe'}`}>
+                            {status === 'danger' ? (
+                                <>
+                                    <h2 style={{color: '#f87171', margin: '0 0 10px 0'}}>🚨 CRITICAL ALERT 🚨</h2>
+                                    <strong>{result.message}</strong>
+                                    <hr style={{borderColor: 'rgba(239,68,68,0.3)', margin: '15px 0'}} />
+                                    <div style={{color: '#fca5a5'}}>Target Locked: {result.vehicleId}</div>
+                                    <span className="fine-amount">Fine: {result.fine}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <h2 style={{color: '#34d399', margin: '0 0 10px 0'}}>✅ ALL CLEAR</h2>
+                                    <strong>{result.message}</strong>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Animated Highway */}
+                <div className="highway-container">
+                    <div
+                        className="road-lines"
+                        style={{
+                            animation: speedValue > 0 ? `driveFast ${animationDuration} linear infinite` : 'none'
+                        }}
+                    ></div>
+                    <div
+                        className="car-icon"
+                        style={{
+                            transform: `translateX(-50%) scale(${carScale}) translateY(${carY})`
+                        }}
+                    >🚘</div>
+                </div>
+            </div>
+        );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<TrafficApp />);
 </script>
 </body>
 </html>
