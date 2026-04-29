@@ -5,7 +5,7 @@ FROM eclipse-temurin:21-jdk-jammy
 WORKDIR /app
 
 # Copy the whole project into the container
-COPY . .
+COPY SmartTrafficSystem/ .
 
 # Grant execute permission to the Maven wrapper
 RUN chmod +x ./mvnw
